@@ -2,7 +2,7 @@ use arboard::Clipboard;
 use crossterm::cursor::{self, MoveTo};
 use crossterm::event::{KeyCode, KeyModifiers, read};
 use crossterm::execute;
-use crossterm::style::{Color, SetForegroundColor};
+use crossterm::style::{Color, ResetColor, SetForegroundColor};
 use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use timecat::prelude::*;
@@ -141,6 +141,7 @@ fn print_screen(board: &Board, word: &[String], clipboard: &mut Clipboard) -> io
 
     execute!(io::stdout(), MoveTo(40, 3))?;
     execute!(io::stdout(), Clear(ClearType::CurrentLine))?;
+    execute!(io::stdout(), ResetColor)?;
     if board.is_stalemate() {
         print!("{:?} is stalemated!", board.turn());
     } else if board.is_checkmate() {
