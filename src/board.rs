@@ -2,7 +2,8 @@ use std::io;
 
 use crossterm::style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor};
 use crossterm::{cursor::MoveTo, execute};
-use shakmaty::{Board, File, Rank, Role, Square};
+// use shakmaty::{Board, File, Rank, Role, Square};
+use timecat::prelude::*;
 
 pub fn print(board: &Board, pos: (u16, u16)) -> io::Result<()> {
     print_board(pos)?;
@@ -64,18 +65,21 @@ pub fn print_board(pos: (u16, u16)) -> io::Result<()> {
 pub fn print_pieces(board: &Board, pos: (u16, u16)) -> io::Result<()> {
     for y in 0..8u16 {
         for x in 0..8u16 {
-            let sq = Square::from_coords(File::new(x as u32), Rank::new(7 - y as u32));
-            let role = match board.role_at(sq) {
+            let sq = Square::from_rank_and_file(
+                Rank::from_index(7 - y as usize),
+                File::from_index(x as usize),
+            );
+            let role = match board.get_piece_type_at(sq) {
                 None => " ",
-                Some(Role::Pawn) => "󰡙",
-                Some(Role::Knight) => "󰡘",
-                Some(Role::Bishop) => "󰡜",
-                Some(Role::Rook) => "󰡛",
-                Some(Role::Queen) => "󰡚",
-                Some(Role::King) => "󰡗",
+                Some(PieceType::Pawn) => "󰡙",
+                Some(PieceType::Knight) => "󰡘",
+                Some(PieceType::Bishop) => "󰡜",
+                Some(PieceType::Rook) => "󰡛",
+                Some(PieceType::Queen) => "󰡚",
+                Some(PieceType::King) => "󰡗",
             };
             let foreground = match board.color_at(sq) {
-                Some(shakmaty::Color::Black) => Color::Green,
+                Some(timecat::Color::Black) => Color::Green,
                 _ => Color::White,
             };
             let background = match (x + y) % 2 {
