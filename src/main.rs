@@ -30,6 +30,9 @@ fn main() -> io::Result<()> {
 
         match (event.modifiers, event.code) {
             (KeyModifiers::CONTROL, KeyCode::Char('c')) => break true,
+            (KeyModifiers::CONTROL, KeyCode::Char('l')) => {
+                word.clear();
+            }
             (_, KeyCode::Esc) => break false,
             (_, KeyCode::Backspace) => {
                 word.pop();
