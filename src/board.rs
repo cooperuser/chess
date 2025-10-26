@@ -4,8 +4,11 @@ use crossterm::style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor
 use crossterm::{cursor::MoveTo, execute};
 use timecat::prelude::*;
 
-pub fn print(board: &Board, pos: (u16, u16)) -> io::Result<()> {
+pub fn print(board: &Board, m: Option<Move>, pos: (u16, u16)) -> io::Result<()> {
     print_board(pos)?;
+    if let Some(m) = m {
+        print_move(m, pos)?;
+    }
     print_pieces(board, pos)?;
     execute!(io::stdout(), ResetColor)?;
     Ok(())
@@ -58,6 +61,38 @@ pub fn print_board(pos: (u16, u16)) -> io::Result<()> {
     // println!("▐███▌   ▐███▌   ▐███▌   ▐███▌");
     // println!("▝▀▀▀▘   ▝▀▀▀▘   ▝▀▀▀▘   ▝▀▀▀▘");
 
+    Ok(())
+}
+
+pub fn print_move(m: Move, pos: (u16, u16)) -> io::Result<()> {
+    let source = m.get_source();
+    let source = (source.get_file().to_index(), source.get_rank().to_index());
+    let source = (source.0 as u16, 7 - source.1 as u16);
+    let dest = m.get_dest();
+    let dest = (dest.get_file().to_index(), dest.get_rank().to_index());
+    let dest = (dest.0 as u16, 7 - dest.1 as u16);
+    let (source_fg, source_bg) = match (source.0 + source.1) % 2 {
+        0 => (Color::Black, Color::DarkGrey),
+        _ => (Color::DarkGrey, Color::Black),
+    };
+    let (dest_fg, dest_bg) = match (dest.0 + dest.1) % 2 {
+        0 => (Color::Black, Color::DarkGrey),
+        _ => (Color::DarkGrey, Color::Black),
+    };
+    execute!(
+        io::stdout(),
+        MoveTo(pos.0 + source.0 * 4 + 3, pos.1 + source.1 * 2 + 2)
+    )?;
+    execute!(io::stdout(), SetForegroundColor(source_fg))?;
+    execute!(io::stdout(), SetBackgroundColor(source_bg))?;
+    print!("[ ]");
+    execute!(
+        io::stdout(),
+        MoveTo(pos.0 + dest.0 * 4 + 3, pos.1 + dest.1 * 2 + 2)
+    )?;
+    execute!(io::stdout(), SetForegroundColor(dest_fg))?;
+    execute!(io::stdout(), SetBackgroundColor(dest_bg))?;
+    print!("[ ]");
     Ok(())
 }
 

@@ -69,7 +69,8 @@ fn print_screen(
     input: &str,
 ) -> io::Result<()> {
     clipboard.set_text(board.get_fen()).unwrap();
-    board::print(board, (1, 2))?;
+    let m = board.get_last_stack_move();
+    board::print(board, m.map(|m| m.unwrap()), (1, 2))?;
 
     execute!(io::stdout(), MoveTo(0, 0))?;
     println!("{}", board.get_fen());
