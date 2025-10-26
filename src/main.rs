@@ -1,84 +1,119 @@
 use arboard::Clipboard;
-use crossterm::cursor::MoveTo;
+use crossterm::cursor::{self, MoveTo};
+use crossterm::event::{KeyCode, KeyModifiers, read};
 use crossterm::execute;
+use crossterm::style::{Color, SetForegroundColor};
 use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use timecat::prelude::*;
 
 use std::io;
-use std::io::prelude::*;
 
 mod board;
 
 fn main() -> io::Result<()> {
     let mut clipboard = Clipboard::new().unwrap();
     execute!(io::stdout(), EnterAlternateScreen)?;
-    // enable_raw_mode()?;
+    enable_raw_mode()?;
 
-    let stdin = io::stdin();
     let mut board = Board::default();
-    print_screen(&board, &mut clipboard, true, "")?;
+    let mut word: Vec<String> = Vec::new();
+    print_screen(&board, &word, &mut clipboard)?;
 
-    for line in stdin.lock().lines() {
-        execute!(io::stdout(), Clear(ClearType::All))?;
-
-        let line = line.unwrap();
-        let success = match line.as_str() {
-            "" => break,
-            "undo" => board.pop().is_ok(),
-            "?" => {
-                let possible = board.generate_legal_moves().len();
-                execute!(io::stdout(), MoveTo(40, 2))?;
-                print!(
-                    "{:?} has {} possible move{}",
-                    board.turn(),
-                    possible,
-                    if possible != 1 { "s" } else { "" }
-                );
-                true
-            }
-            "bot" => {
-                let mut engine = Engine::from_board(board.shallow_clone());
-                let response = engine.search_depth_quiet(5);
-                let best_move = response.get_best_move().expect("No best move");
-                board.push(best_move).is_ok()
-            }
-            mv => board.push_san(mv).is_ok(),
+    let halt = loop {
+        let Ok(event) = read() else {
+            continue;
+        };
+        let Some(event) = event.as_key_press_event() else {
+            continue;
         };
 
-        print_screen(&board, &mut clipboard, success, line.as_str())?;
-    }
+        match (event.modifiers, event.code) {
+            (KeyModifiers::CONTROL, KeyCode::Char('c')) => break true,
+            (_, KeyCode::Esc) => break false,
+            (_, KeyCode::Backspace) => {
+                word.pop();
+            }
+            (_, KeyCode::Char(c)) => {
+                word.push(c.to_string());
+            }
+            (_, KeyCode::Enter) => match word.join("").as_str() {
+                "" => {}
+                "undo" => {
+                    _ = board.pop();
+                    word.clear();
+                }
+                "?" => {
+                    let possible = board.generate_legal_moves().len();
+                    execute!(io::stdout(), MoveTo(40, 2))?;
+                    print!(
+                        "{:?} has {} possible move{}",
+                        board.turn(),
+                        possible,
+                        if possible != 1 { "s" } else { "" }
+                    );
+                    word.clear();
+                }
+                "bot" => {
+                    let mut engine = Engine::from_board(board.shallow_clone());
+                    let response = engine.search_depth_quiet(5);
+                    let best_move = response.get_best_move().expect("No best move");
+                    _ = board.push(best_move);
+                    word.clear();
+                }
+                m => {
+                    if board.push_san(m).is_ok() {
+                        word.clear();
+                    }
+                }
+            },
+            _ => {}
+        }
 
-    // while let Ok(event) = read() {
-    //     let Some(event) = event.as_key_press_event() else {
-    //         continue;
-    //     };
-    //     if event.code == KeyCode::Esc {
-    //         break;
-    //     }
-    // }
+        print_screen(&board, &word, &mut clipboard)?;
+    };
 
-    // disable_raw_mode()?;
+    disable_raw_mode()?;
     execute!(io::stdout(), LeaveAlternateScreen)?;
-    Ok(())
+
+    std::process::exit(if halt { 130 } else { 0 });
 }
 
-fn print_screen(
-    board: &Board,
-    clipboard: &mut Clipboard,
-    success: bool,
-    input: &str,
-) -> io::Result<()> {
+fn print_screen(board: &Board, word: &[String], clipboard: &mut Clipboard) -> io::Result<()> {
     clipboard.set_text(board.get_fen()).unwrap();
-    let m = board.get_last_stack_move();
-    board::print(board, m.map(|m| m.unwrap()), (1, 2))?;
+
+    execute!(io::stdout(), MoveTo(0, 22))?;
+    execute!(io::stdout(), cursor::Hide)?;
+    execute!(io::stdout(), Clear(ClearType::CurrentLine))?;
+    let next = match word.join("").as_str() {
+        "" | "?" | "bot" | "undo" => {
+            execute!(io::stdout(), SetForegroundColor(Color::Blue))?;
+            println!("‣");
+            None
+        }
+        word => {
+            let m: Result<Move, TimecatError> = board.parse_san(word);
+            match m {
+                Ok(m) => {
+                    execute!(io::stdout(), SetForegroundColor(Color::Green))?;
+                    println!("󰸞");
+                    Some(m)
+                }
+                Err(_) => {
+                    execute!(io::stdout(), SetForegroundColor(Color::Red))?;
+                    println!("×");
+                    None
+                }
+            }
+        }
+    };
+
+    let last = board.get_last_stack_move();
+    board::print(board, last.map(|m| m.unwrap()), next, (1, 2))?;
 
     execute!(io::stdout(), MoveTo(0, 0))?;
     println!("{}", board.get_fen());
-    if !success {
-        execute!(io::stdout(), MoveTo(0, 22))?;
-        println!("Illegal move: {input}");
-    }
-    execute!(io::stdout(), MoveTo(0, 25))?;
+    execute!(io::stdout(), MoveTo(0, 24))?;
     println!("Moves played: {}", format_moves(board));
 
     execute!(io::stdout(), MoveTo(40, 3))?;
@@ -88,7 +123,10 @@ fn print_screen(
         print!("{:?} is in check!", board.turn());
     }
 
-    execute!(io::stdout(), MoveTo(0, 23))?;
+    execute!(io::stdout(), MoveTo(2, 22))?;
+    println!("{}", word.join(""));
+    execute!(io::stdout(), MoveTo(2 + word.len() as u16, 22))?;
+    execute!(io::stdout(), cursor::Show)?;
     Ok(())
 }
 
@@ -104,20 +142,3 @@ fn format_moves(board: &Board) -> String {
         .collect::<Vec<_>>()
         .join("  ")
 }
-
-// fn print_events() -> io::Result<()> {
-//     while let Ok(event) = read() {
-//         let Some(event) = event.as_key_press_event() else {
-//             continue;
-//         };
-//         let modifier = match event.modifiers {
-//             KeyModifiers::NONE => "".to_string(),
-//             _ => format!("{:}+", event.modifiers),
-//         };
-//         println!("Key pressed: {modifier}{code}\r", code = event.code);
-//         if event.code == KeyCode::Esc {
-//             break;
-//         }
-//     }
-//     Ok(())
-// }

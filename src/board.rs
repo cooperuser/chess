@@ -4,10 +4,18 @@ use crossterm::style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor
 use crossterm::{cursor::MoveTo, execute};
 use timecat::prelude::*;
 
-pub fn print(board: &Board, m: Option<Move>, pos: (u16, u16)) -> io::Result<()> {
+pub fn print(
+    board: &Board,
+    last: Option<Move>,
+    next: Option<Move>,
+    pos: (u16, u16),
+) -> io::Result<()> {
     print_board(pos)?;
-    if let Some(m) = m {
-        print_move(m, pos)?;
+    if let Some(m) = last {
+        print_move(m, pos, false)?;
+    }
+    if let Some(m) = next {
+        print_move(m, pos, true)?;
     }
     print_pieces(board, pos)?;
     execute!(io::stdout(), ResetColor)?;
@@ -64,19 +72,23 @@ pub fn print_board(pos: (u16, u16)) -> io::Result<()> {
     Ok(())
 }
 
-pub fn print_move(m: Move, pos: (u16, u16)) -> io::Result<()> {
+pub fn print_move(m: Move, pos: (u16, u16), next: bool) -> io::Result<()> {
     let source = m.get_source();
     let source = (source.get_file().to_index(), source.get_rank().to_index());
     let source = (source.0 as u16, 7 - source.1 as u16);
     let dest = m.get_dest();
     let dest = (dest.get_file().to_index(), dest.get_rank().to_index());
     let dest = (dest.0 as u16, 7 - dest.1 as u16);
-    let (source_fg, source_bg) = match (source.0 + source.1) % 2 {
-        0 => (Color::Black, Color::DarkGrey),
+    let (source_fg, source_bg) = match (next, (source.0 + source.1) % 2) {
+        (true, 0) => (Color::Yellow, Color::DarkGrey),
+        (true, _) => (Color::Yellow, Color::Black),
+        (_, 0) => (Color::Black, Color::DarkGrey),
         _ => (Color::DarkGrey, Color::Black),
     };
-    let (dest_fg, dest_bg) = match (dest.0 + dest.1) % 2 {
-        0 => (Color::Black, Color::DarkGrey),
+    let (dest_fg, dest_bg) = match (next, (dest.0 + dest.1) % 2) {
+        (true, 0) => (Color::Yellow, Color::DarkGrey),
+        (true, _) => (Color::Yellow, Color::Black),
+        (_, 0) => (Color::Black, Color::DarkGrey),
         _ => (Color::DarkGrey, Color::Black),
     };
     execute!(
