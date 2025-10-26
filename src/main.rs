@@ -33,9 +33,9 @@ fn main() -> io::Result<()> {
         match (event.modifiers, event.code) {
             (_, KeyCode::Esc) => break false,
             (KeyModifiers::CONTROL, KeyCode::Char('c')) => break true,
+            (KeyModifiers::CONTROL, KeyCode::Char('w')) => word.clear(),
             (KeyModifiers::CONTROL, KeyCode::Char('l')) => {
-                execute!(io::stdout(), Clear(ClearType::All))?;
-                word.clear();
+                execute!(io::stdout(), Clear(ClearType::All))?
             }
             (KeyModifiers::CONTROL, KeyCode::Char('b')) => {
                 if board.generate_legal_moves().is_empty() {
