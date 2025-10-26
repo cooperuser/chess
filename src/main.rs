@@ -37,10 +37,10 @@ fn main() -> io::Result<()> {
                 true
             }
             "bot" => {
-                // let mv = bot_prelude::IterativeSearcher::best_move(board.shallow_clone(), 5);
-                // board.apply_move(mv);
-                // moves.push(mv.stringify());
-                true
+                let mut engine = Engine::from_board(board.shallow_clone());
+                let response = engine.search_depth_quiet(5);
+                let best_move = response.get_best_move().expect("No best move");
+                board.push(best_move).is_ok()
             }
             mv => board.push_san(mv).is_ok(),
         };
