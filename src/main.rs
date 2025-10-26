@@ -1,3 +1,4 @@
+use arboard::Clipboard;
 use crossterm::cursor::MoveTo;
 use crossterm::execute;
 use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
@@ -9,12 +10,14 @@ mod board;
 mod chess;
 
 fn main() -> io::Result<()> {
+    let mut clipboard = Clipboard::new().unwrap();
     execute!(io::stdout(), EnterAlternateScreen)?;
     // enable_raw_mode()?;
 
     let stdin = io::stdin();
     let mut board = Board::start_pos();
     let mut moves = Vec::new();
+    clipboard.set_text(board.fen()).unwrap();
     board::print(&board, (1, 0))?;
     execute!(io::stdout(), MoveTo(0, 20))?;
     println!("{}", board.fen());
@@ -58,6 +61,7 @@ fn main() -> io::Result<()> {
             }
         };
 
+        clipboard.set_text(board.fen()).unwrap();
         board::print(&board, (1, 0))?;
         execute!(io::stdout(), MoveTo(0, 20))?;
         println!("{}", board.fen());

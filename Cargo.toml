@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+arboard = "3.6.1"
 crossterm = "0.29.0"
 pleco = "0.5.0"
