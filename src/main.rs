@@ -2,7 +2,6 @@ use crossterm::cursor::MoveTo;
 use crossterm::execute;
 use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
 use pleco::Board;
-use std::fmt::format;
 use std::io;
 use std::io::prelude::*;
 
@@ -19,21 +18,30 @@ fn main() -> io::Result<()> {
     board::print(&board, (1, 0))?;
     execute!(io::stdout(), MoveTo(0, 20))?;
     println!("{}", board.fen());
+    execute!(io::stdout(), MoveTo(0, 24))?;
+    print_moves(&moves)?;
     execute!(io::stdout(), MoveTo(0, 22))?;
 
     for line in stdin.lock().lines() {
         let line = line.unwrap();
-        let res = match line.as_str() {
+        let success = match line.as_str() {
             "" => break,
             "undo" => {
-                board.undo_move();
-                true
+                if board.moves_played() != 0 {
+                    board.undo_move();
+                    moves.pop();
+                    true
+                } else {
+                    false
+                }
             }
             mv => {
                 if board.apply_uci_move(mv) {
                     moves.push(line);
+                    true
+                } else {
+                    false
                 }
-                true
             }
         };
 
@@ -42,8 +50,8 @@ fn main() -> io::Result<()> {
         execute!(io::stdout(), MoveTo(0, 20))?;
         println!("{}", board.fen());
         execute!(io::stdout(), MoveTo(0, 21))?;
-        println!("{}", if res { "" } else { "Illegal move" });
-        execute!(io::stdout(), MoveTo(0, 23))?;
+        println!("{}", if success { "" } else { "Illegal move" });
+        execute!(io::stdout(), MoveTo(0, 24))?;
         print_moves(&moves)?;
         execute!(io::stdout(), MoveTo(0, 22))?;
     }
@@ -76,7 +84,7 @@ fn print_moves(moves: &[String]) -> io::Result<()> {
         })
         .collect();
 
-    println!("{}", parts.join("  "));
+    println!("Moves played: {}", parts.join("  "));
     Ok(())
 }
 
