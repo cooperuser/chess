@@ -17,13 +17,7 @@ fn main() -> io::Result<()> {
     let stdin = io::stdin();
     let mut board = Board::start_pos();
     let mut moves = Vec::new();
-    clipboard.set_text(board.fen()).unwrap();
-    board::print(&board, (1, 0))?;
-    execute!(io::stdout(), MoveTo(0, 20))?;
-    println!("{}", board.fen());
-    execute!(io::stdout(), MoveTo(0, 24))?;
-    print_moves(&moves)?;
-    execute!(io::stdout(), MoveTo(0, 22))?;
+    print_screen(&board, &moves, &mut clipboard, true)?;
 
     for line in stdin.lock().lines() {
         execute!(io::stdout(), Clear(ClearType::All))?;
@@ -61,23 +55,7 @@ fn main() -> io::Result<()> {
             }
         };
 
-        clipboard.set_text(board.fen()).unwrap();
-        board::print(&board, (1, 0))?;
-        execute!(io::stdout(), MoveTo(0, 20))?;
-        println!("{}", board.fen());
-        execute!(io::stdout(), MoveTo(0, 21))?;
-        println!("{}", if success { "" } else { "Illegal move" });
-        execute!(io::stdout(), MoveTo(0, 24))?;
-        print_moves(&moves)?;
-
-        execute!(io::stdout(), MoveTo(40, 1))?;
-        if board.checkmate() {
-            print!("{:?} is checkmated!", board.turn());
-        } else if board.in_check() {
-            print!("{:?} is in check!", board.turn());
-        }
-
-        execute!(io::stdout(), MoveTo(0, 22))?;
+        print_screen(&board, &moves, &mut clipboard, success)?;
     }
 
     // while let Ok(event) = read() {
@@ -91,6 +69,33 @@ fn main() -> io::Result<()> {
 
     // disable_raw_mode()?;
     execute!(io::stdout(), LeaveAlternateScreen)?;
+    Ok(())
+}
+
+fn print_screen(
+    board: &Board,
+    moves: &[String],
+    clipboard: &mut Clipboard,
+    success: bool,
+) -> io::Result<()> {
+    clipboard.set_text(board.fen()).unwrap();
+    board::print(board, (1, 0))?;
+
+    execute!(io::stdout(), MoveTo(0, 20))?;
+    println!("{}", board.fen());
+    execute!(io::stdout(), MoveTo(0, 21))?;
+    println!("{}", if success { "" } else { "Illegal move" });
+    execute!(io::stdout(), MoveTo(0, 24))?;
+    print_moves(moves)?;
+
+    execute!(io::stdout(), MoveTo(40, 1))?;
+    if board.checkmate() {
+        print!("{:?} is checkmated!", board.turn());
+    } else if board.in_check() {
+        print!("{:?} is in check!", board.turn());
+    }
+
+    execute!(io::stdout(), MoveTo(0, 22))?;
     Ok(())
 }
 
