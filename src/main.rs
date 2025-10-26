@@ -34,7 +34,18 @@ fn main() -> io::Result<()> {
             (_, KeyCode::Esc) => break false,
             (KeyModifiers::CONTROL, KeyCode::Char('c')) => break true,
             (KeyModifiers::CONTROL, KeyCode::Char('l')) => {
+                execute!(io::stdout(), Clear(ClearType::All))?;
                 word.clear();
+            }
+            (KeyModifiers::CONTROL, KeyCode::Char('b')) => {
+                if board.generate_legal_moves().is_empty() {
+                    continue;
+                }
+                let mut engine = Engine::from_board(board.shallow_clone());
+                let response = engine.search_depth_quiet(6);
+                let best_move = response.get_best_move().expect("No best move");
+                _ = board.push(best_move);
+                add_to_history(&mut history, &mut word, &mut index);
             }
             (_, KeyCode::Up) => {
                 index = (index + 1).min(history.len());
@@ -73,8 +84,11 @@ fn main() -> io::Result<()> {
                     add_to_history(&mut history, &mut word, &mut index);
                 }
                 "bot" => {
+                    if board.generate_legal_moves().is_empty() {
+                        continue;
+                    }
                     let mut engine = Engine::from_board(board.shallow_clone());
-                    let response = engine.search_depth_quiet(5);
+                    let response = engine.search_depth_quiet(6);
                     let best_move = response.get_best_move().expect("No best move");
                     _ = board.push(best_move);
                     add_to_history(&mut history, &mut word, &mut index);
