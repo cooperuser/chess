@@ -23,6 +23,8 @@ fn main() -> io::Result<()> {
     execute!(io::stdout(), MoveTo(0, 22))?;
 
     for line in stdin.lock().lines() {
+        execute!(io::stdout(), Clear(ClearType::All))?;
+
         let line = line.unwrap();
         let success = match line.as_str() {
             "" => break,
@@ -35,6 +37,17 @@ fn main() -> io::Result<()> {
                     false
                 }
             }
+            "?" => {
+                let possible = board.generate_moves().len();
+                execute!(io::stdout(), MoveTo(40, 2))?;
+                print!(
+                    "{:?} has {} possible move{}",
+                    board.turn(),
+                    possible,
+                    if possible != 1 { "s" } else { "" }
+                );
+                true
+            }
             mv => {
                 if board.apply_uci_move(mv) {
                     moves.push(line);
@@ -45,7 +58,6 @@ fn main() -> io::Result<()> {
             }
         };
 
-        execute!(io::stdout(), Clear(ClearType::All))?;
         board::print(&board, (1, 0))?;
         execute!(io::stdout(), MoveTo(0, 20))?;
         println!("{}", board.fen());
@@ -53,6 +65,14 @@ fn main() -> io::Result<()> {
         println!("{}", if success { "" } else { "Illegal move" });
         execute!(io::stdout(), MoveTo(0, 24))?;
         print_moves(&moves)?;
+
+        execute!(io::stdout(), MoveTo(40, 1))?;
+        if board.checkmate() {
+            print!("{:?} is checkmated!", board.turn());
+        } else if board.in_check() {
+            print!("{:?} is in check!", board.turn());
+        }
+
         execute!(io::stdout(), MoveTo(0, 22))?;
     }
 
