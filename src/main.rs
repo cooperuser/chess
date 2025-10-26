@@ -16,7 +16,7 @@ fn main() -> io::Result<()> {
 
     let stdin = io::stdin();
     let mut board = Board::default();
-    print_screen(&board, &mut clipboard, true)?;
+    print_screen(&board, &mut clipboard, true, "")?;
 
     for line in stdin.lock().lines() {
         execute!(io::stdout(), Clear(ClearType::All))?;
@@ -45,7 +45,7 @@ fn main() -> io::Result<()> {
             mv => board.push_san(mv).is_ok(),
         };
 
-        print_screen(&board, &mut clipboard, success)?;
+        print_screen(&board, &mut clipboard, success, line.as_str())?;
     }
 
     // while let Ok(event) = read() {
@@ -62,14 +62,21 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn print_screen(board: &Board, clipboard: &mut Clipboard, success: bool) -> io::Result<()> {
+fn print_screen(
+    board: &Board,
+    clipboard: &mut Clipboard,
+    success: bool,
+    input: &str,
+) -> io::Result<()> {
     clipboard.set_text(board.get_fen()).unwrap();
     board::print(board, (1, 2))?;
 
     execute!(io::stdout(), MoveTo(0, 0))?;
     println!("{}", board.get_fen());
-    execute!(io::stdout(), MoveTo(0, 22))?;
-    println!("{}", if success { "" } else { "Illegal move" });
+    if !success {
+        execute!(io::stdout(), MoveTo(0, 22))?;
+        println!("Illegal move: {input}");
+    }
     execute!(io::stdout(), MoveTo(0, 25))?;
     println!("Moves played: {}", format_moves(board));
 
