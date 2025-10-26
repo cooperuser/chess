@@ -2,7 +2,8 @@ use arboard::Clipboard;
 use crossterm::cursor::MoveTo;
 use crossterm::execute;
 use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
-use pleco::Board;
+use pleco::tools::Searcher;
+use pleco::{Board, bot_prelude};
 use std::io;
 use std::io::prelude::*;
 
@@ -43,6 +44,12 @@ fn main() -> io::Result<()> {
                     possible,
                     if possible != 1 { "s" } else { "" }
                 );
+                true
+            }
+            "bot" => {
+                let mv = bot_prelude::IterativeSearcher::best_move(board.shallow_clone(), 5);
+                board.apply_move(mv);
+                moves.push(mv.stringify());
                 true
             }
             mv => {
