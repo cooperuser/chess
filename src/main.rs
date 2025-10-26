@@ -45,7 +45,6 @@ fn main() -> io::Result<()> {
                 let response = engine.search_depth_quiet(6);
                 let best_move = response.get_best_move().expect("No best move");
                 _ = board.push(best_move);
-                add_to_history(&mut history, &mut word, &mut index);
             }
             (_, KeyCode::Up) => {
                 index = (index + 1).min(history.len());
@@ -142,7 +141,9 @@ fn print_screen(board: &Board, word: &[String], clipboard: &mut Clipboard) -> io
 
     execute!(io::stdout(), MoveTo(40, 3))?;
     execute!(io::stdout(), Clear(ClearType::CurrentLine))?;
-    if board.is_checkmate() {
+    if board.is_stalemate() {
+        print!("{:?} is stalemated!", board.turn());
+    } else if board.is_checkmate() {
         print!("{:?} is checkmated!", board.turn());
     } else if board.is_check() {
         print!("{:?} is in check!", board.turn());
