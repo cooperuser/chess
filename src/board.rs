@@ -2,7 +2,6 @@ use std::io;
 
 use crossterm::style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor};
 use crossterm::{cursor::MoveTo, execute};
-// use shakmaty::{Board, File, Rank, Role, Square};
 use timecat::prelude::*;
 
 pub fn print(board: &Board, pos: (u16, u16)) -> io::Result<()> {

@@ -2,12 +2,12 @@ use arboard::Clipboard;
 use crossterm::cursor::MoveTo;
 use crossterm::execute;
 use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
-use std::io;
-use std::io::prelude::*;
 use timecat::prelude::*;
 
+use std::io;
+use std::io::prelude::*;
+
 mod board;
-// mod chess;
 
 fn main() -> io::Result<()> {
     let mut clipboard = Clipboard::new().unwrap();
@@ -15,9 +15,8 @@ fn main() -> io::Result<()> {
     // enable_raw_mode()?;
 
     let stdin = io::stdin();
-    let mut boards: Vec<Board> = vec![Board::default()];
-    let mut moves: Vec<Move> = Vec::new();
-    print_screen(&boards, &moves, &mut clipboard, true)?;
+    let mut board = Board::default();
+    print_screen(&board, &mut clipboard, true)?;
 
     for line in stdin.lock().lines() {
         execute!(io::stdout(), Clear(ClearType::All))?;
@@ -25,17 +24,8 @@ fn main() -> io::Result<()> {
         let line = line.unwrap();
         let success = match line.as_str() {
             "" => break,
-            "undo" => {
-                if !moves.is_empty() {
-                    boards.pop();
-                    moves.pop();
-                    true
-                } else {
-                    false
-                }
-            }
+            "undo" => board.pop().is_ok(),
             "?" => {
-                let board = boards.last().unwrap();
                 let possible = board.generate_legal_moves().len();
                 execute!(io::stdout(), MoveTo(40, 2))?;
                 print!(
@@ -52,41 +42,10 @@ fn main() -> io::Result<()> {
                 // moves.push(mv.stringify());
                 true
             }
-            mv => {
-                let mut board = boards.last().unwrap().clone();
-                if let Ok(valid) = board.push_san(mv) {
-                    let mv = valid.unwrap();
-                    boards.push(board);
-                    moves.push(mv);
-                    // match valid {
-                    //     Some(_) => todo!(),
-                    //     None => todo!(),
-                    // }
-                    //     boards.push(board);
-                    //     moves.push(mv);
-                    // }
-                    true
-                } else {
-                    false
-                }
-            } // mv => match mv.parse::<San>() {
-              //     Ok(san) => {
-              //         let chess = boards.last().unwrap();
-              //         match san.to_move(chess) {
-              //             Ok(mv) => {
-              //                 boards.push(chess.clone().play(mv).unwrap());
-              //                 moves.push(mv);
-              //                 true
-              //             }
-              //             Err(SanError::IllegalSan) => false,
-              //             Err(SanError::AmbiguousSan) => false,
-              //         }
-              //     }
-              //     Err(ParseSanError) => false,
-              // },
+            mv => board.push_san(mv).is_ok(),
         };
 
-        print_screen(&boards, &moves, &mut clipboard, success)?;
+        print_screen(&board, &mut clipboard, success)?;
     }
 
     // while let Ok(event) = read() {
@@ -103,13 +62,7 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn print_screen(
-    boards: &[Board],
-    moves: &[Move],
-    clipboard: &mut Clipboard,
-    success: bool,
-) -> io::Result<()> {
-    let board = boards.last().unwrap();
+fn print_screen(board: &Board, clipboard: &mut Clipboard, success: bool) -> io::Result<()> {
     clipboard.set_text(board.get_fen()).unwrap();
     board::print(board, (1, 2))?;
 
@@ -118,7 +71,7 @@ fn print_screen(
     execute!(io::stdout(), MoveTo(0, 22))?;
     println!("{}", if success { "" } else { "Illegal move" });
     execute!(io::stdout(), MoveTo(0, 25))?;
-    print_moves(boards, moves)?;
+    println!("Moves played: {}", format_moves(board));
 
     execute!(io::stdout(), MoveTo(40, 3))?;
     if board.is_checkmate() {
@@ -131,28 +84,17 @@ fn print_screen(
     Ok(())
 }
 
-fn print_moves(boards: &[Board], moves: &[Move]) -> io::Result<()> {
-    let parts: Vec<String> = moves
+fn format_moves(board: &Board) -> String {
+    board
+        .get_stack()
+        .iter()
+        .map(|(b, m)| m.algebraic(b, false).expect("Illegal move was played"))
+        .collect::<Vec<_>>()
         .chunks(2)
         .enumerate()
-        .map(|(index, set)| {
-            format!(
-                "{}. {}",
-                index + 1,
-                set.iter()
-                    .enumerate()
-                    .map(|m| {
-                        m.1.algebraic(&boards[index * 2 + m.0], false)
-                            .expect("Illegal move was played")
-                    })
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            )
-        })
-        .collect();
-
-    println!("Moves played: {}", parts.join("  "));
-    Ok(())
+        .map(|(index, pair)| format!("{}. {}", index + 1, pair.join(" ")))
+        .collect::<Vec<_>>()
+        .join("  ")
 }
 
 // fn print_events() -> io::Result<()> {
