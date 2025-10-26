@@ -2,8 +2,8 @@ use arboard::Clipboard;
 use crossterm::cursor::MoveTo;
 use crossterm::execute;
 use crossterm::terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
-use pleco::tools::Searcher;
-use pleco::{Board, bot_prelude};
+use shakmaty::san::{ParseSanError, San, SanError};
+use shakmaty::{Chess, Move, Position};
 use std::io;
 use std::io::prelude::*;
 
@@ -16,9 +16,9 @@ fn main() -> io::Result<()> {
     // enable_raw_mode()?;
 
     let stdin = io::stdin();
-    let mut board = Board::start_pos();
-    let mut moves = Vec::new();
-    print_screen(&board, &moves, &mut clipboard, true)?;
+    let mut boards: Vec<Chess> = vec![Chess::default()];
+    let mut moves: Vec<Move> = Vec::new();
+    print_screen(&boards, &moves, &mut clipboard, true)?;
 
     for line in stdin.lock().lines() {
         execute!(io::stdout(), Clear(ClearType::All))?;
@@ -27,8 +27,8 @@ fn main() -> io::Result<()> {
         let success = match line.as_str() {
             "" => break,
             "undo" => {
-                if board.moves_played() != 0 {
-                    board.undo_move();
+                if !moves.is_empty() {
+                    boards.pop();
                     moves.pop();
                     true
                 } else {
@@ -36,33 +36,41 @@ fn main() -> io::Result<()> {
                 }
             }
             "?" => {
-                let possible = board.generate_moves().len();
+                let chess = boards.last().unwrap();
+                let possible = chess.legal_moves().len();
                 execute!(io::stdout(), MoveTo(40, 2))?;
                 print!(
                     "{:?} has {} possible move{}",
-                    board.turn(),
+                    chess.turn(),
                     possible,
                     if possible != 1 { "s" } else { "" }
                 );
                 true
             }
             "bot" => {
-                let mv = bot_prelude::IterativeSearcher::best_move(board.shallow_clone(), 5);
-                board.apply_move(mv);
-                moves.push(mv.stringify());
+                // let mv = bot_prelude::IterativeSearcher::best_move(board.shallow_clone(), 5);
+                // board.apply_move(mv);
+                // moves.push(mv.stringify());
                 true
             }
-            mv => {
-                if board.apply_uci_move(mv) {
-                    moves.push(line);
-                    true
-                } else {
-                    false
+            mv => match mv.parse::<San>() {
+                Ok(san) => {
+                    let chess = boards.last().unwrap();
+                    match san.to_move(chess) {
+                        Ok(mv) => {
+                            boards.push(chess.clone().play(mv).unwrap());
+                            moves.push(mv);
+                            true
+                        }
+                        Err(SanError::IllegalSan) => false,
+                        Err(SanError::AmbiguousSan) => false,
+                    }
                 }
-            }
+                Err(ParseSanError) => false,
+            },
         };
 
-        print_screen(&board, &moves, &mut clipboard, success)?;
+        print_screen(&boards, &moves, &mut clipboard, success)?;
     }
 
     // while let Ok(event) = read() {
@@ -80,42 +88,48 @@ fn main() -> io::Result<()> {
 }
 
 fn print_screen(
-    board: &Board,
-    moves: &[String],
+    boards: &[Chess],
+    moves: &[Move],
     clipboard: &mut Clipboard,
     success: bool,
 ) -> io::Result<()> {
-    clipboard.set_text(board.fen()).unwrap();
-    board::print(board, (1, 0))?;
+    let chess = boards.last().unwrap();
+    let board = chess.board();
+    clipboard.set_text(board.board_fen().to_string()).unwrap();
+    board::print(board, (1, 2))?;
 
-    execute!(io::stdout(), MoveTo(0, 20))?;
-    println!("{}", board.fen());
+    execute!(io::stdout(), MoveTo(0, 0))?;
+    println!("{}", board.board_fen());
     execute!(io::stdout(), MoveTo(0, 21))?;
     println!("{}", if success { "" } else { "Illegal move" });
     execute!(io::stdout(), MoveTo(0, 24))?;
-    print_moves(moves)?;
+    print_moves(boards, moves)?;
 
-    execute!(io::stdout(), MoveTo(40, 1))?;
-    if board.checkmate() {
-        print!("{:?} is checkmated!", board.turn());
-    } else if board.in_check() {
-        print!("{:?} is in check!", board.turn());
+    execute!(io::stdout(), MoveTo(40, 3))?;
+    if chess.is_checkmate() {
+        print!("{:?} is checkmated!", chess.turn());
+    } else if chess.is_check() {
+        print!("{:?} is in check!", chess.turn());
     }
 
     execute!(io::stdout(), MoveTo(0, 22))?;
     Ok(())
 }
 
-fn print_moves(moves: &[String]) -> io::Result<()> {
+fn print_moves(boards: &[Chess], moves: &[Move]) -> io::Result<()> {
     let parts: Vec<String> = moves
         .chunks(2)
         .enumerate()
         .map(|(index, set)| {
             format!(
-                "{}. {} {}",
+                "{}. {}",
                 index + 1,
-                set[0],
-                set.get(1).unwrap_or(&String::from(""))
+                set.iter()
+                    .enumerate()
+                    .map(|m| { San::from_move(&boards[index / 2 + m.0], *m.1) })
+                    .map(|m| m.to_string())
+                    .collect::<Vec<_>>()
+                    .join(" ")
             )
         })
         .collect();

@@ -2,9 +2,7 @@ use std::io;
 
 use crossterm::style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor};
 use crossterm::{cursor::MoveTo, execute};
-use pleco::{Board, Player};
-
-use crate::chess;
+use shakmaty::{Board, File, Rank, Role, Square};
 
 pub fn print(board: &Board, pos: (u16, u16)) -> io::Result<()> {
     print_board(pos)?;
@@ -66,25 +64,19 @@ pub fn print_board(pos: (u16, u16)) -> io::Result<()> {
 pub fn print_pieces(board: &Board, pos: (u16, u16)) -> io::Result<()> {
     for y in 0..8u16 {
         for x in 0..8u16 {
-            let sq = chess::pos_to_sq(7 - y as usize, x as usize);
-            let (player, piece) = match board.piece_at_sq(sq) {
-                pleco::Piece::None => (Player::White, " "),
-                pleco::Piece::WhitePawn => (Player::White, "󰡙"),
-                pleco::Piece::WhiteKnight => (Player::White, "󰡘"),
-                pleco::Piece::WhiteBishop => (Player::White, "󰡜"),
-                pleco::Piece::WhiteRook => (Player::White, "󰡛"),
-                pleco::Piece::WhiteQueen => (Player::White, "󰡚"),
-                pleco::Piece::WhiteKing => (Player::White, "󰡗"),
-                pleco::Piece::BlackPawn => (Player::Black, "󰡙"),
-                pleco::Piece::BlackKnight => (Player::Black, "󰡘"),
-                pleco::Piece::BlackBishop => (Player::Black, "󰡜"),
-                pleco::Piece::BlackRook => (Player::Black, "󰡛"),
-                pleco::Piece::BlackQueen => (Player::Black, "󰡚"),
-                pleco::Piece::BlackKing => (Player::Black, "󰡗"),
+            let sq = Square::from_coords(File::new(x as u32), Rank::new(7 - y as u32));
+            let role = match board.role_at(sq) {
+                None => " ",
+                Some(Role::Pawn) => "󰡙",
+                Some(Role::Knight) => "󰡘",
+                Some(Role::Bishop) => "󰡜",
+                Some(Role::Rook) => "󰡛",
+                Some(Role::Queen) => "󰡚",
+                Some(Role::King) => "󰡗",
             };
-            let foreground = match player {
-                Player::White => Color::White,
-                Player::Black => Color::Green,
+            let foreground = match board.color_at(sq) {
+                Some(shakmaty::Color::Black) => Color::Green,
+                _ => Color::White,
             };
             let background = match (x + y) % 2 {
                 0 => Color::DarkGrey,
@@ -93,7 +85,7 @@ pub fn print_pieces(board: &Board, pos: (u16, u16)) -> io::Result<()> {
             execute!(io::stdout(), MoveTo(pos.0 + x * 4 + 4, pos.1 + y * 2 + 2))?;
             execute!(io::stdout(), SetForegroundColor(foreground))?;
             execute!(io::stdout(), SetBackgroundColor(background))?;
-            print!("{}", piece);
+            print!("{}", role);
         }
     }
     Ok(())
