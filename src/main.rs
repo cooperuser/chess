@@ -18,6 +18,8 @@ fn main() -> io::Result<()> {
 
     let mut board = Board::default();
     let mut word: Vec<String> = Vec::new();
+    let mut history: Vec<Vec<String>> = Vec::new();
+    let mut index = 0usize;
     print_screen(&board, &word, &mut clipboard)?;
 
     let halt = loop {
@@ -29,11 +31,25 @@ fn main() -> io::Result<()> {
         };
 
         match (event.modifiers, event.code) {
+            (_, KeyCode::Esc) => break false,
             (KeyModifiers::CONTROL, KeyCode::Char('c')) => break true,
             (KeyModifiers::CONTROL, KeyCode::Char('l')) => {
                 word.clear();
             }
-            (_, KeyCode::Esc) => break false,
+            (_, KeyCode::Up) => {
+                index = (index + 1).min(history.len());
+                word = match history.get(history.len() - index) {
+                    Some(w) => w.clone(),
+                    _ => Vec::new(),
+                };
+            }
+            (_, KeyCode::Down) => {
+                index = index.saturating_sub(1);
+                word = match history.get(history.len() - index) {
+                    Some(w) => w.clone(),
+                    _ => Vec::new(),
+                };
+            }
             (_, KeyCode::Backspace) => {
                 word.pop();
             }
@@ -41,10 +57,9 @@ fn main() -> io::Result<()> {
                 word.push(c.to_string());
             }
             (_, KeyCode::Enter) => match word.join("").as_str() {
-                "" => {}
                 "undo" => {
                     _ = board.pop();
-                    word.clear();
+                    add_to_history(&mut history, &mut word, &mut index);
                 }
                 "?" => {
                     let possible = board.generate_legal_moves().len();
@@ -55,18 +70,18 @@ fn main() -> io::Result<()> {
                         possible,
                         if possible != 1 { "s" } else { "" }
                     );
-                    word.clear();
+                    add_to_history(&mut history, &mut word, &mut index);
                 }
                 "bot" => {
                     let mut engine = Engine::from_board(board.shallow_clone());
                     let response = engine.search_depth_quiet(5);
                     let best_move = response.get_best_move().expect("No best move");
                     _ = board.push(best_move);
-                    word.clear();
+                    add_to_history(&mut history, &mut word, &mut index);
                 }
                 m => {
                     if board.push_san(m).is_ok() {
-                        word.clear();
+                        add_to_history(&mut history, &mut word, &mut index);
                     }
                 }
             },
@@ -115,6 +130,7 @@ fn print_screen(board: &Board, word: &[String], clipboard: &mut Clipboard) -> io
     board::print(board, last.map(|m| m.unwrap()), next, (1, 2))?;
 
     execute!(io::stdout(), MoveTo(0, 0))?;
+    execute!(io::stdout(), Clear(ClearType::CurrentLine))?;
     println!("{}", board.get_fen());
     execute!(io::stdout(), MoveTo(0, 24))?;
     println!("Moves played: {}", format_moves(board));
@@ -144,4 +160,12 @@ fn format_moves(board: &Board) -> String {
         .map(|(index, pair)| format!("{}. {}", index + 1, pair.join(" ")))
         .collect::<Vec<_>>()
         .join("  ")
+}
+
+fn add_to_history(history: &mut Vec<Vec<String>>, word: &mut Vec<String>, index: &mut usize) {
+    if *index == 0 {
+        history.push(word.clone());
+    }
+    word.clear();
+    *index = 0;
 }
