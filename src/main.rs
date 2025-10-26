@@ -126,6 +126,14 @@ fn print_screen(board: &Board, word: &[String], clipboard: &mut Clipboard) -> io
         }
     };
 
+    execute!(io::stdout(), MoveTo(40, 3))?;
+    execute!(io::stdout(), Clear(ClearType::CurrentLine))?;
+    if board.is_checkmate() {
+        print!("{:?} is checkmated!", board.turn());
+    } else if board.is_check() {
+        print!("{:?} is in check!", board.turn());
+    }
+
     let last = board.get_last_stack_move();
     board::print(board, last.map(|m| m.unwrap()), next, (1, 2))?;
 
@@ -134,13 +142,6 @@ fn print_screen(board: &Board, word: &[String], clipboard: &mut Clipboard) -> io
     println!("{}", board.get_fen());
     execute!(io::stdout(), MoveTo(0, 24))?;
     println!("Moves played: {}", format_moves(board));
-
-    execute!(io::stdout(), MoveTo(40, 3))?;
-    if board.is_checkmate() {
-        print!("{:?} is checkmated!", board.turn());
-    } else if board.is_check() {
-        print!("{:?} is in check!", board.turn());
-    }
 
     execute!(io::stdout(), MoveTo(2, 22))?;
     println!("{}", word.join(""));

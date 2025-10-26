@@ -28,25 +28,25 @@ pub fn print_board(pos: (u16, u16)) -> io::Result<()> {
     println!("a   b   c   d   e   f   g   h");
     execute!(io::stdout(), SetForegroundColor(Color::DarkGrey))?;
     execute!(io::stdout(), MoveTo(pos.0 + 2, pos.1 + 1))?;
-    println!("▗▄▄▄▖   ▗▄▄▄▖   ▗▄▄▄▖   ▗▄▄▄▖");
+    println!("▗▄▄▄▖   ▗▄▄▄▖   ▗▄▄▄▖   ▗▄▄▄▖    ");
     for i in 0..3 {
         execute!(io::stdout(), MoveTo(pos.0 + 2, pos.1 + i * 4 + 2))?;
-        println!("▐███▌   ▐███▌   ▐███▌   ▐███▌");
+        println!("▐███▌   ▐███▌   ▐███▌   ▐███▌    ");
         execute!(io::stdout(), MoveTo(pos.0 + 2, pos.1 + i * 4 + 3))?;
         println!("▝▀▀▀▚▄▄▄▞▀▀▀▚▄▄▄▞▀▀▀▚▄▄▄▞▀▀▀▚▄▄▄▖");
-        execute!(io::stdout(), MoveTo(pos.0 + 6, pos.1 + i * 4 + 4))?;
-        println!("▐███▌   ▐███▌   ▐███▌   ▐███▌");
+        execute!(io::stdout(), MoveTo(pos.0 + 2, pos.1 + i * 4 + 4))?;
+        println!("    ▐███▌   ▐███▌   ▐███▌   ▐███▌");
         execute!(io::stdout(), MoveTo(pos.0 + 2, pos.1 + i * 4 + 5))?;
         println!("▗▄▄▄▞▀▀▀▚▄▄▄▞▀▀▀▚▄▄▄▞▀▀▀▚▄▄▄▞▀▀▀▘");
     }
     execute!(io::stdout(), MoveTo(pos.0 + 2, pos.1 + 14))?;
-    println!("▐███▌   ▐███▌   ▐███▌   ▐███▌");
+    println!("▐███▌   ▐███▌   ▐███▌   ▐███▌    ");
     execute!(io::stdout(), MoveTo(pos.0 + 2, pos.1 + 15))?;
     println!("▝▀▀▀▚▄▄▄▞▀▀▀▚▄▄▄▞▀▀▀▚▄▄▄▞▀▀▀▚▄▄▄▖");
-    execute!(io::stdout(), MoveTo(pos.0 + 6, pos.1 + 16))?;
-    println!("▐███▌   ▐███▌   ▐███▌   ▐███▌");
-    execute!(io::stdout(), MoveTo(pos.0 + 6, pos.1 + 17))?;
-    println!("▝▀▀▀▘   ▝▀▀▀▘   ▝▀▀▀▘   ▝▀▀▀▘");
+    execute!(io::stdout(), MoveTo(pos.0 + 2, pos.1 + 16))?;
+    println!("    ▐███▌   ▐███▌   ▐███▌   ▐███▌");
+    execute!(io::stdout(), MoveTo(pos.0 + 2, pos.1 + 17))?;
+    println!("    ▝▀▀▀▘   ▝▀▀▀▘   ▝▀▀▀▘   ▝▀▀▀▘");
     execute!(io::stdout(), SetForegroundColor(Color::Yellow))?;
     execute!(io::stdout(), MoveTo(pos.0 + 4, pos.1 + 18))?;
     println!("a   b   c   d   e   f   g   h");
