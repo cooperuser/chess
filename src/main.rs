@@ -34,6 +34,9 @@ fn main() -> io::Result<()> {
             (_, KeyCode::Esc) => break false,
             (KeyModifiers::CONTROL, KeyCode::Char('c')) => break true,
             (KeyModifiers::CONTROL, KeyCode::Char('w')) => word.clear(),
+            (KeyModifiers::CONTROL, KeyCode::Char('z')) => {
+                _ = board.pop();
+            }
             (KeyModifiers::CONTROL, KeyCode::Char('l')) => {
                 execute!(io::stdout(), Clear(ClearType::All))?
             }
@@ -157,6 +160,7 @@ fn print_screen(board: &Board, word: &[String], clipboard: &mut Clipboard) -> io
     execute!(io::stdout(), Clear(ClearType::CurrentLine))?;
     println!("{}", board.get_fen());
     execute!(io::stdout(), MoveTo(0, 24))?;
+    execute!(io::stdout(), Clear(ClearType::FromCursorDown))?;
     println!("Moves played: {}", format_moves(board));
 
     execute!(io::stdout(), MoveTo(2, 22))?;
