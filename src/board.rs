@@ -1,6 +1,7 @@
 use std::io;
 
 use crossterm::style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor};
+use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor::MoveTo, execute};
 use timecat::prelude::*;
 
@@ -18,6 +19,7 @@ pub fn print(
         print_move(m, pos, true)?;
     }
     print_pieces(board, pos)?;
+    print_material(board, pos)?;
     execute!(io::stdout(), ResetColor)?;
     Ok(())
 }
@@ -115,15 +117,10 @@ pub fn print_pieces(board: &Board, pos: (u16, u16)) -> io::Result<()> {
                 Rank::from_index(7 - y as usize),
                 File::from_index(x as usize),
             );
-            let role = match board.get_piece_type_at(sq) {
-                None => " ",
-                Some(PieceType::Pawn) => "󰡙",
-                Some(PieceType::Knight) => "󰡘",
-                Some(PieceType::Bishop) => "󰡜",
-                Some(PieceType::Rook) => "󰡛",
-                Some(PieceType::Queen) => "󰡚",
-                Some(PieceType::King) => "󰡗",
-            };
+            let piece = board
+                .get_piece_type_at(sq)
+                .map(piece_to_str)
+                .unwrap_or_default();
             let foreground = match board.color_at(sq) {
                 Some(timecat::Color::Black) => Color::Green,
                 _ => Color::White,
@@ -135,8 +132,62 @@ pub fn print_pieces(board: &Board, pos: (u16, u16)) -> io::Result<()> {
             execute!(io::stdout(), MoveTo(pos.0 + x * 4 + 4, pos.1 + y * 2 + 2))?;
             execute!(io::stdout(), SetForegroundColor(foreground))?;
             execute!(io::stdout(), SetBackgroundColor(background))?;
-            print!("{}", role);
+            print!("{}", piece);
         }
     }
     Ok(())
+}
+
+pub fn print_material(board: &Board, pos: (u16, u16)) -> io::Result<()> {
+    let mut materials = Vec::new();
+    let mut scores: Vec<isize> = Vec::new();
+    for c in 0..2 {
+        let color = timecat::Color::from_index(c);
+        let mut total_score = 0;
+        let mut material: Vec<String> = Vec::new();
+        for (piece, count, score) in [
+            (PieceType::Pawn, 8, 1),
+            (PieceType::Knight, 2, 3),
+            (PieceType::Bishop, 2, 3),
+            (PieceType::Rook, 2, 5),
+            (PieceType::Queen, 1, 9),
+        ] {
+            let pieces = board.get_colored_piece_mask(piece, color).count();
+            let pieces = count - pieces;
+            if pieces > 0 {
+                total_score += score * pieces;
+                let pieces = [piece_to_str(piece)].repeat(pieces).join("");
+                material.push(pieces);
+            }
+        }
+
+        scores.push(total_score as isize);
+        materials.push(material);
+    }
+
+    execute!(io::stdout(), ResetColor)?;
+    for c in 0..2 {
+        let color = if c == 0 { Color::White } else { Color::Green };
+        execute!(io::stdout(), SetForegroundColor(color))?;
+        execute!(io::stdout(), MoveTo(pos.0 + 40, pos.1 + 14 + 2 * c as u16))?;
+        execute!(io::stdout(), Clear(ClearType::UntilNewLine))?;
+        print!("{}", materials[1 - c].join(" "));
+        let score = scores[1 - c] - scores[c];
+        if score > 0 {
+            execute!(io::stdout(), SetForegroundColor(Color::DarkGrey))?;
+            print!(" +{score}");
+        }
+    }
+    Ok(())
+}
+
+fn piece_to_str(piece: PieceType) -> &'static str {
+    match piece {
+        PieceType::Pawn => "󰡙",
+        PieceType::Knight => "󰡘",
+        PieceType::Bishop => "󰡜",
+        PieceType::Rook => "󰡛",
+        PieceType::Queen => "󰡚",
+        PieceType::King => "󰡗",
+    }
 }
