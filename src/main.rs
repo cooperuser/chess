@@ -16,11 +16,11 @@ fn main() -> io::Result<()> {
     execute!(io::stdout(), EnterAlternateScreen)?;
     enable_raw_mode()?;
 
-    let mut board = Board::default();
+    let mut boards = vec![Board::default()];
     let mut word: Vec<String> = Vec::new();
     let mut history: Vec<Vec<String>> = Vec::new();
     let mut index = 0usize;
-    print_screen(&board, &word, &mut clipboard)?;
+    print_screen(&boards[0], &word, &mut clipboard)?;
 
     let halt = loop {
         let Ok(event) = read() else {
@@ -30,9 +30,19 @@ fn main() -> io::Result<()> {
             continue;
         };
 
+        let mut board = boards.pop().unwrap();
+
         match (event.modifiers, event.code) {
             (_, KeyCode::Esc) => break false,
             (KeyModifiers::CONTROL, KeyCode::Char('c')) => break true,
+            (KeyModifiers::CONTROL, KeyCode::Char('a')) => {
+                boards.push(board.clone());
+            }
+            (KeyModifiers::CONTROL, KeyCode::Char('x')) => {
+                if let Some(b) = boards.pop() {
+                    board = b;
+                }
+            }
             (KeyModifiers::CONTROL, KeyCode::Char('w')) => word.clear(),
             (KeyModifiers::CONTROL, KeyCode::Char('z')) => {
                 _ = board.pop();
@@ -95,6 +105,16 @@ fn main() -> io::Result<()> {
                     _ = board.push(best_move);
                     add_to_history(&mut history, &mut word, &mut index);
                 }
+                "push" => {
+                    boards.push(board.clone());
+                    add_to_history(&mut history, &mut word, &mut index);
+                }
+                "pop" => {
+                    if let Some(b) = boards.pop() {
+                        board = b;
+                    }
+                    add_to_history(&mut history, &mut word, &mut index);
+                }
                 m => {
                     if board.push_san(m).is_ok() {
                         add_to_history(&mut history, &mut word, &mut index);
@@ -105,6 +125,7 @@ fn main() -> io::Result<()> {
         }
 
         print_screen(&board, &word, &mut clipboard)?;
+        boards.push(board);
     };
 
     disable_raw_mode()?;
@@ -120,7 +141,7 @@ fn print_screen(board: &Board, word: &[String], clipboard: &mut Clipboard) -> io
     execute!(io::stdout(), cursor::Hide)?;
     execute!(io::stdout(), Clear(ClearType::CurrentLine))?;
     let next = match word.join("").as_str() {
-        "" | "?" | "bot" | "undo" => {
+        "" | "?" | "bot" | "push" | "pop" | "undo" => {
             execute!(io::stdout(), SetForegroundColor(Color::Blue))?;
             println!("‣");
             None
