@@ -153,8 +153,7 @@ fn print_screen(board: &Board, word: &[String], clipboard: &mut Clipboard) -> io
         print!("{:?} is in check!", board.turn());
     }
 
-    let last = board.get_last_stack_move();
-    board::print(board, last.map(|m| m.unwrap()), next, (1, 2))?;
+    board::print(board, next, (1, 2))?;
 
     execute!(io::stdout(), MoveTo(0, 0))?;
     execute!(io::stdout(), Clear(ClearType::CurrentLine))?;

@@ -5,14 +5,9 @@ use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor::MoveTo, execute};
 use timecat::prelude::*;
 
-pub fn print(
-    board: &Board,
-    last: Option<Move>,
-    next: Option<Move>,
-    pos: (u16, u16),
-) -> io::Result<()> {
+pub fn print(board: &Board, next: Option<Move>, pos: (u16, u16)) -> io::Result<()> {
     print_board(pos)?;
-    if let Some(m) = last {
+    if let Some(m) = board.get_last_stack_move().map(|m| m.unwrap()) {
         print_move(m, pos, false)?;
     }
     if let Some(m) = next {
